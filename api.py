@@ -29,6 +29,7 @@ def create_app(test_config=None):
                 stopping_criteria=stopping_criteria,
                 instruction=instr,
                 input=inp,
-                stream_output=True
+                stream_output=False,
+                num_beams=1
             ))
     return app
