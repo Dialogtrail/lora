@@ -15,20 +15,20 @@ def create_app(test_config=None):
     def gen():
         instr = request.args["instruction"]
         inp = request.args["input"]
-        print("Instruction")
-        print(instr)
 
-        def resp():
-            yield '{"response":"'
-            yield generate(
-                model=model,
-                tokenizer=tokenizer,
-                prompter=prompter,
-                stopping_criteria=stopping_criteria,
-                instruction=instr,
-                input=inp
-            )
-            yield '"}'
-        return stream_with_context(resp())
+        print("Generating")
+
+        resp = generate(
+            model=model,
+            tokenizer=tokenizer,
+            prompter=prompter,
+            stopping_criteria=stopping_criteria,
+            instruction=instr,
+            input=inp
+        )
+
+        return {
+            "resp": resp
+        }
 
     return app
