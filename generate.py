@@ -118,7 +118,8 @@ def generate(
     top_p=0.75,
     top_k=40,
     num_beams=4,
-    max_new_tokens=128
+    max_new_tokens=128,
+    stream_output=False
 ):
     prompt = prompter.generate_prompt(instruction, input)
     print(prompt)
@@ -130,6 +131,42 @@ def generate(
         top_k=top_k,
         num_beams=num_beams
     )
+
+    generate_params = {
+        "input_ids": input_ids,
+        "generation_config": generation_config,
+        "return_dict_in_generate": True,
+        "output_scores": True,
+        "max_new_tokens": max_new_tokens,
+    }
+
+    if stream_output:
+        def generate_with_callback(callback=None, **kwargs):
+            kwargs.setdefault(
+                "stopping_criteria", transformers.StoppingCriteriaList()
+            )
+            kwargs["stopping_criteria"].append(
+                Stream(callback_func=callback)
+            )
+            with torch.no_grad():
+                model.generate(**kwargs)
+
+        def generate_with_streaming(**kwargs):
+            return Iteratorize(
+                generate_with_callback, kwargs, callback=None
+            )
+
+        with generate_with_streaming(**generate_params) as generator:
+            for output in generator:
+                # new_tokens = len(output) - len(input_ids[0])
+                decoded_output = tokenizer.decode(output)
+
+                if output[-1] in [tokenizer.eos_token_id]:
+                    break
+
+                yield prompter.get_response(decoded_output)
+        return  # early return for stream_output
+
     with torch.no_grad():
         generation_output = model.generate(
             input_ids=input_ids,

@@ -13,26 +13,22 @@ def create_app(test_config=None):
 
     @app.route('/generate')
     def gen():
-        instr = request.args["instruction"]
-        inp = request.args["input"]
-        token = request.headers["x-api-token"]
+        instr = request.args.get("instruction", "")
+        inp = request.args.get("input", "")
+        token = request.headers.get("x-api-token", "")
         if token != Config.SECRET:
             abort(401)
 
         print("Generating")
 
-        resp = next(
+        return stream_with_context(
             generate(
                 model=model,
                 tokenizer=tokenizer,
                 prompter=prompter,
                 stopping_criteria=stopping_criteria,
                 instruction=instr,
-                input=inp
+                input=inp,
+                stream_output=True
             ))
-
-        return {
-            "resp": resp
-        }
-
     return app
