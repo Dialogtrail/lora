@@ -1,0 +1,8 @@
+{
+  "description": "A shorter template to experiment with.",
+  "prompt_input": "A chat conversation between a user and an AI assistant. The assistant responds to the user's question based on the information in the context.\n\n### Context:\n{instruction}\n\n### Conversation:\nUSER: {input}\nASSISTANT:",
+  "prompt_no_input": "### User:\n{input}\n\n### Assistant:\n",
+  "response_split": "ASSISTANT:",
+  "stop_word": "</s>"
+}
+

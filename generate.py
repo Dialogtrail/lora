@@ -6,7 +6,7 @@ import gradio as gr
 import torch
 import transformers
 from peft import PeftModel
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer
+from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList
 
 from utils.callbacks import Iteratorize, Stream
 from utils.prompter import Prompter
@@ -23,14 +23,28 @@ except:  # noqa: E722
     pass
 
 
-def main(
+class StoppingCriteriaSub(StoppingCriteria):
+
+    def __init__(self, stops=[], encounters=1):
+        super().__init__()
+        self.stops = [stop.to("cuda") for stop in stops]
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+        for stop in self.stops:
+            if torch.all((stop == input_ids[0][-len(stop):])).item():
+                return True
+
+        return False
+
+
+def init(
     load_8bit: bool = False,
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
-    prompt_template: str = "",  # The prompt template to use, will default to alpaca.
-    server_name: str = "0.0.0.0",  # Allows to listen on all interfaces by providing '0.
-    share_gradio: bool = False,
+    prompt_template: str = ""
 ):
+    print(base_model)
+    print(lora_weights)
     base_model = base_model or os.environ.get("BASE_MODEL", "")
     assert (
         base_model
@@ -38,6 +52,12 @@ def main(
 
     prompter = Prompter(prompt_template)
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    stop_words = ["</s>"]
+    stop_words_ids = [tokenizer(stop_word, return_tensors='pt')[
+        'input_ids'].squeeze() for stop_word in stop_words]
+    stopping_criteria = StoppingCriteriaList(
+        [StoppingCriteriaSub(stops=stop_words_ids)])
+
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
             base_model,
@@ -84,6 +104,59 @@ def main(
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
+    return (model, tokenizer, prompter, stopping_criteria)
+
+
+def generate(
+    model,
+    tokenizer,
+    prompter,
+    stopping_criteria,
+    instruction,
+    input=None,
+    temperature=0.1,
+    top_p=0.75,
+    top_k=40,
+    num_beams=4,
+    max_new_tokens=128
+):
+    prompt = prompter.generate_prompt(instruction, input)
+    print(prompt)
+    inputs = tokenizer(prompt, return_tensors="pt")
+    input_ids = inputs["input_ids"].to(device)
+    generation_config = GenerationConfig(
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        num_beams=num_beams
+    )
+    with torch.no_grad():
+        generation_output = model.generate(
+            input_ids=input_ids,
+            generation_config=generation_config,
+            return_dict_in_generate=True,
+            output_scores=True,
+            max_new_tokens=max_new_tokens,
+            stopping_criteria=stopping_criteria
+        )
+        s = generation_output.sequences[0]
+        output = tokenizer.decode(s)
+        yield prompter.get_response(output)
+
+
+def main(
+    load_8bit: bool = False,
+    base_model: str = "",
+    lora_weights: str = "tloen/alpaca-lora-7b",
+    # The prompt template to use, will default to alpaca.
+    prompt_template: str = "",
+    # Allows to listen on all interfaces by providing '0.
+    server_name: str = "0.0.0.0",
+    share_gradio: bool = True,
+):
+    model, tokenizer, prompter, stopping_criteria = init(
+        load_8bit, base_model, lora_weights, prompt_template)
+
     def evaluate(
         instruction,
         input=None,
@@ -96,6 +169,7 @@ def main(
         **kwargs,
     ):
         prompt = prompter.generate_prompt(instruction, input)
+        print(prompt)
         inputs = tokenizer(prompt, return_tensors="pt")
         input_ids = inputs["input_ids"].to(device)
         generation_config = GenerationConfig(
@@ -153,6 +227,7 @@ def main(
                 return_dict_in_generate=True,
                 output_scores=True,
                 max_new_tokens=max_new_tokens,
+                stopping_criteria=stopping_criteria
             )
         s = generation_output.sequences[0]
         output = tokenizer.decode(s)
@@ -177,12 +252,12 @@ def main(
                 minimum=0, maximum=100, step=1, value=40, label="Top k"
             ),
             gr.components.Slider(
-                minimum=1, maximum=4, step=1, value=4, label="Beams"
+                minimum=1, maximum=4, step=1, value=1, label="Beams"
             ),
             gr.components.Slider(
                 minimum=1, maximum=2000, step=1, value=128, label="Max tokens"
             ),
-            gr.components.Checkbox(label="Stream output"),
+            gr.components.Checkbox(label="Stream output", value=True),
         ],
         outputs=[
             gr.inputs.Textbox(
@@ -190,9 +265,9 @@ def main(
                 label="Output",
             )
         ],
-        title="🦙🌲 Alpaca-LoRA",
-        description="Alpaca-LoRA is a 7B-parameter LLaMA model finetuned to follow instructions. It is trained on the [Stanford Alpaca](https://github.com/tatsu-lab/stanford_alpaca) dataset and makes use of the Huggingface LLaMA implementation. For more information, please visit [the project's website](https://github.com/tloen/alpaca-lora).",  # noqa: E501
-    ).queue().launch(server_name="0.0.0.0", share=share_gradio)
+        title="Test",
+        description="",  # noqa: E501
+    ).queue(concurrency_count=5).launch(server_name="0.0.0.0", share=share_gradio)
     # Old testing code follows.
 
     """
