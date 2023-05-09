@@ -1,4 +1,4 @@
-from flask import Flask, stream_with_context, request
+from flask import Flask, stream_with_context, request, abort
 from config import Config
 from generate import init, generate
 
@@ -15,17 +15,21 @@ def create_app(test_config=None):
     def gen():
         instr = request.args["instruction"]
         inp = request.args["input"]
+        token = request.headers["x-api-token"]
+        if token != Config.SECRET:
+            abort(401)
 
         print("Generating")
 
-        resp = generate(
-            model=model,
-            tokenizer=tokenizer,
-            prompter=prompter,
-            stopping_criteria=stopping_criteria,
-            instruction=instr,
-            input=inp
-        )
+        resp = next(
+            generate(
+                model=model,
+                tokenizer=tokenizer,
+                prompter=prompter,
+                stopping_criteria=stopping_criteria,
+                instruction=instr,
+                input=inp
+            ))
 
         return {
             "resp": resp
