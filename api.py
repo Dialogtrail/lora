@@ -1,4 +1,4 @@
-from flask import Flask, stream_with_context
+from flask import Flask, stream_with_context, request
 from config import Config
 from generate import init, generate
 
@@ -13,14 +13,22 @@ def create_app(test_config=None):
 
     @app.route('/generate')
     def gen():
-        return stream_with_context(
-            generate(
+        instr = request.args["instruction"]
+        inp = request.args["input"]
+        print("Instruction")
+        print(instr)
+
+        def resp():
+            yield '{"response":"'
+            yield generate(
                 model=model,
                 tokenizer=tokenizer,
                 prompter=prompter,
                 stopping_criteria=stopping_criteria,
-                instruction="You are an AI assistant",
-                input="Who are you?"
-            ))
+                instruction=instr,
+                input=inp
+            )
+            yield '"}'
+        return stream_with_context(resp())
 
     return app
