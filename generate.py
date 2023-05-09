@@ -24,26 +24,15 @@ except:  # noqa: E722
 
 
 class StoppingCriteriaSub(StoppingCriteria):
-
     def __init__(self, stops=[], encounters=1):
         super().__init__()
-        self.stops = [stop.to(device) for stop in stops]
+        self.stops = stops
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         for stop in self.stops:
-            if torch.all((stop == input_ids[0][-len(stop):])).item():
+            if stop == input_ids[0][-1]:
                 return True
 
-        return False
-
-
-class KeywordsStoppingCriteria(StoppingCriteria):
-    def __init__(self, keywords_ids: list):
-        self.keywords = [kw.to(device) for kw in keywords_ids]
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        if input_ids[0][-1] in self.keywords:
-            return True
         return False
 
 
@@ -62,11 +51,10 @@ def init(
 
     prompter = Prompter(prompt_template)
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
-    stop_words = ["</s>"]
-    stop_words_ids = [tokenizer(stop_word, return_tensors='pt')[
-        'input_ids'].squeeze() for stop_word in stop_words]
+    # stop_word = "</s>"
+    # stop_words_ids = [tokenizer(stop_word, return_tensors='pt')['input_ids']]
     stopping_criteria = StoppingCriteriaList(
-        [StoppingCriteriaSub(stops=stop_words_ids), KeywordsStoppingCriteria(keywords_ids=stop_words_ids)])
+        [StoppingCriteriaSub(stops=[tokenizer.eos_token_id])])
 
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
