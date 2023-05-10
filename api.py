@@ -2,11 +2,16 @@ from flask import Flask, stream_with_context, request, abort
 from config import Config
 from generate import init, generate, generate_embs
 
+from sentence_transformers import SentenceTransformer, util
+
 
 def create_app(test_config=None):
-    print("Initializing")
+    print("Initializing LLM")
     model, tokenizer, prompter, stopping_criteria = init(
         False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
+
+    print("Initializing embedding model")
+    embedder = SentenceTransformer('distiluse-base-multilingual-cased-v2')
 
     app = Flask("api", instance_relative_config=True)
     app.config.from_object(Config)
@@ -40,9 +45,10 @@ def create_app(test_config=None):
         if token != Config.SECRET:
             abort(401)
 
-        print("Embeddings")
-        embs = generate_embs(model, tokenizer, inp)
-        print(embs)
+        embs = embedder.encode(inp)
+
+        print(inp)
+        print("----")
 
         return {
             "embeddings": [float(x) for x in embs]
