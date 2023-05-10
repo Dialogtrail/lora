@@ -105,6 +105,13 @@ def init(
     return (model, tokenizer, prompter, stopping_criteria)
 
 
+def generate_embs(model, tokenizer, input):
+    input_ids = tokenizer(input).input_ids
+    input_embs = model.get_input_embeddings()
+    embs = input_embs(torch.LongTensor([input_ids]))
+    mean = torch.mean(embs[0], 0).cpu().detach()
+
+
 def generate(
     model,
     tokenizer,
