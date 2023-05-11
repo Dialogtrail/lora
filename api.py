@@ -55,7 +55,7 @@ def create_app(test_config=None):
         }
 
     @app.route('/test_embeddings')
-    def gen_embs():
+    def test_embs():
         ctx = request.args.get("context", "")
         inp = request.args.get("input", "")
         token = request.headers.get("x-api-token", "")
