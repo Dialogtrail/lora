@@ -54,4 +54,21 @@ def create_app(test_config=None):
             "embeddings": [float(x) for x in embs]
         }
 
+    @app.route('/test_embeddings')
+    def gen_embs():
+        ctx = request.args.get("context", "")
+        inp = request.args.get("input", "")
+        token = request.headers.get("x-api-token", "")
+        if token != Config.SECRET:
+            abort(401)
+
+        ctx_embs = embedder.encode(ctx)
+        inp_embs = embedder.encode(inp)
+
+        similarity = util.cos_sim(ctx_embs, inp_embs)
+
+        return {
+            "similarity": similarity
+        }
+
     return app
