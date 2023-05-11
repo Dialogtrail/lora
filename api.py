@@ -5,13 +5,19 @@ from generate import init, generate, generate_embs
 from sentence_transformers import SentenceTransformer, util
 
 
+def create_sentences(string):
+    return [s.strip() for s in re.split("\.|\n|\!|\?", i) if s.strip()]
+
+
 def create_app(test_config=None):
     print("Initializing LLM")
     model, tokenizer, prompter, stopping_criteria = init(
         False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
 
     print("Initializing embedding model")
-    embedder = SentenceTransformer('distiluse-base-multilingual-cased-v2')
+    # model = "distiluse-base-multilingual-cased-v2"
+    model = "all-mpnet-base-v2"
+    embedder = SentenceTransformer(model)
 
     app = Flask("api", instance_relative_config=True)
     app.config.from_object(Config)
@@ -40,18 +46,25 @@ def create_app(test_config=None):
 
     @app.route('/embeddings')
     def gen_embs():
+        s = request.args.get("sentences", "true")
         inp = request.args.get("input", "")
         token = request.headers.get("x-api-token", "")
         if token != Config.SECRET:
             abort(401)
+
+        if s == "true":
+            inp = create_sentences(inp)
 
         embs = embedder.encode(inp)
 
         print(inp)
         print("----")
 
+        res = [[float(x2) for x2 in x]
+               for x in embs] if s == "true" else [float(x) for x in embs]
+
         return {
-            "embeddings": [float(x) for x in embs]
+            "embeddings": res
         }
 
     @app.route('/test_embeddings')
@@ -68,7 +81,7 @@ def create_app(test_config=None):
         similarity = util.cos_sim(ctx_embs, inp_embs)
 
         return {
-            "similarity": similarity
+            "similarity": float(similarity)
         }
 
     return app
