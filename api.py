@@ -11,8 +11,8 @@ def create_sentences(string):
 
 def create_app(test_config=None):
     print("Initializing LLM")
-    model, tokenizer, prompter, stopping_criteria = init(
-        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
+    # model, tokenizer, prompter, stopping_criteria = init(
+    #    False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
 
     print("Initializing embedding model")
     # model = "distiluse-base-multilingual-cased-v2"
@@ -32,9 +32,13 @@ def create_app(test_config=None):
         contexts = body['contexts']
         scores = cross.predict([(query, context)
                                for context in contexts])
-        print(scores)
+
+        result = [{"score": float(score), "context": context}
+                  for score, context in zip(scores, contexts)]
+        sort = sorted(result, key=lambda r: r["score"], reversed=True)
+
         return {
-            "result": [{"score": float(score), "context": context} for score, context in zip(scores, contexts)]
+            "result": sort
         }
 
     @app.route('/generate')
