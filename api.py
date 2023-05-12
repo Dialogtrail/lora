@@ -16,8 +16,8 @@ def create_app(test_config=None):
 
     print("Initializing embedding model")
     # model = "distiluse-base-multilingual-cased-v2"
-    model = "all-mpnet-base-v2"
-    embedder = SentenceTransformer(model)
+    embedder_model = "all-mpnet-base-v2"
+    embedder = SentenceTransformer(embedder_model)
 
     print("Initializing cross encoder")
     cross = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
@@ -29,10 +29,13 @@ def create_app(test_config=None):
     def cross_encode():
         body = request.json
         query = body['query']
+        contexts = body['contexts']
         scores = cross.predict([(query, context)
-                               for context in body['contexts']])
+                               for context in contexts])
         print(scores)
-        return scores
+        return {
+            "result": [{"score": float(score), "context": context} for score, context in zip(scores, contexts)]
+        }
 
     @app.route('/generate')
     def gen():
