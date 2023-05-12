@@ -35,7 +35,7 @@ def create_app(test_config=None):
 
         result = [{"score": float(score), "context": context}
                   for score, context in zip(scores, contexts)]
-        sort = sorted(result, key=lambda r: r["score"], reversed=True)
+        sort = sorted(result, key=lambda r: r["score"], reverse=True)
 
         return {
             "result": sort
