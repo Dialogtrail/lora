@@ -1,8 +1,8 @@
 from flask import Flask, stream_with_context, request, abort
 from config import Config
 from generate import init, generate, generate_embs
-
-from sentence_transformers import SentenceTransformer, util
+import re
+from sentence_transformers import SentenceTransformer, util, CrossEncoder
 
 
 def create_sentences(string):
@@ -19,8 +19,20 @@ def create_app(test_config=None):
     model = "all-mpnet-base-v2"
     embedder = SentenceTransformer(model)
 
+    print("Initializing cross encoder")
+    cross = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
+
     app = Flask("api", instance_relative_config=True)
     app.config.from_object(Config)
+
+    @app.route('/cross', methods=['POST'])
+    def cross_encode():
+        body = request.json
+        query = body['query']
+        scores = cross.predict([(query, context)
+                               for context in body['contexts']])
+        print(scores)
+        return scores
 
     @app.route('/generate')
     def gen():
