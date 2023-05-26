@@ -6,7 +6,8 @@ from sentence_transformers import SentenceTransformer, util, CrossEncoder
 
 
 def create_sentences(string):
-    return [s.strip() for s in re.split("\.|\n|\!|\?", string) if s.strip()]
+    # return [s.strip() for s in re.split("\.|\n|\!|\?", string) if s.strip()]
+    return [s.strip() for s in re.split("\n", string) if s.strip()]
 
 
 def create_app(test_config=None):
