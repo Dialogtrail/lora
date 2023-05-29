@@ -24,28 +24,23 @@ except:  # noqa: E722
 
 
 class StoppingCriteriaSub(StoppingCriteria):
-
     def __init__(self, stops=[], encounters=1):
         super().__init__()
-        self.stops = [stop.to("cuda") for stop in stops]
+        self.stops = stops
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         for stop in self.stops:
-            if torch.all((stop == input_ids[0][-len(stop):])).item():
+            if stop == input_ids[0][-1]:
                 return True
 
         return False
 
 
-def main(
+def init(
     load_8bit: bool = False,
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
-    # The prompt template to use, will default to alpaca.
-    prompt_template: str = "",
-    # Allows to listen on all interfaces by providing '0.
-    server_name: str = "0.0.0.0",
-    share_gradio: bool = True,
+    prompt_template: str = ""
 ):
     print(base_model)
     print(lora_weights)
@@ -56,11 +51,10 @@ def main(
 
     prompter = Prompter(prompt_template)
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
-    stop_words = ["</s>"]
-    stop_words_ids = [tokenizer(stop_word, return_tensors='pt')[
-        'input_ids'].squeeze() for stop_word in stop_words]
+    # stop_word = "</s>"
+    # stop_words_ids = [tokenizer(stop_word, return_tensors='pt')['input_ids']]
     stopping_criteria = StoppingCriteriaList(
-        [StoppingCriteriaSub(stops=stop_words_ids)])
+        [StoppingCriteriaSub(stops=[tokenizer.eos_token_id])])
 
     if device == "cuda":
         model = LlamaForCausalLM.from_pretrained(
@@ -107,6 +101,103 @@ def main(
     model.eval()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
+
+    return (model, tokenizer, prompter, stopping_criteria)
+
+
+def generate_embs(model, tokenizer, input):
+    input_ids = tokenizer(input).input_ids
+    input_embs = model.get_input_embeddings()
+    embs = input_embs(torch.LongTensor([input_ids]))
+    mean = torch.mean(embs[0], 0).cpu().detach()
+
+
+def generate(
+    model,
+    tokenizer,
+    prompter,
+    stopping_criteria,
+    instruction,
+    input=None,
+    temperature=0.1,
+    top_p=0.75,
+    top_k=40,
+    num_beams=4,
+    max_new_tokens=128,
+    stream_output=False
+):
+    prompt = prompter.generate_prompt(instruction, input)
+    print(prompt)
+    inputs = tokenizer(prompt, return_tensors="pt")
+    input_ids = inputs["input_ids"].to(device)
+    generation_config = GenerationConfig(
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        num_beams=num_beams
+    )
+
+    generate_params = {
+        "input_ids": input_ids,
+        "generation_config": generation_config,
+        "return_dict_in_generate": True,
+        "output_scores": True,
+        "max_new_tokens": max_new_tokens,
+    }
+
+    if stream_output:
+        def generate_with_callback(callback=None, **kwargs):
+            kwargs.setdefault(
+                "stopping_criteria", transformers.StoppingCriteriaList()
+            )
+            kwargs["stopping_criteria"].append(
+                Stream(callback_func=callback)
+            )
+            with torch.no_grad():
+                model.generate(**kwargs)
+
+        def generate_with_streaming(**kwargs):
+            return Iteratorize(
+                generate_with_callback, kwargs, callback=None
+            )
+
+        with generate_with_streaming(**generate_params) as generator:
+            for output in generator:
+                # new_tokens = len(output) - len(input_ids[0])
+                decoded_output = tokenizer.decode(output)
+
+                if output[-1] in [tokenizer.eos_token_id]:
+                    break
+
+                yield prompter.get_response(decoded_output)
+        return  # early return for stream_output
+
+    with torch.no_grad():
+        generation_output = model.generate(
+            input_ids=input_ids,
+            generation_config=generation_config,
+            return_dict_in_generate=True,
+            output_scores=True,
+            max_new_tokens=max_new_tokens,
+            stopping_criteria=stopping_criteria
+        )
+        s = generation_output.sequences[0]
+        output = tokenizer.decode(s)
+        yield prompter.get_response(output)
+
+
+def main(
+    load_8bit: bool = False,
+    base_model: str = "",
+    lora_weights: str = "tloen/alpaca-lora-7b",
+    # The prompt template to use, will default to alpaca.
+    prompt_template: str = "",
+    # Allows to listen on all interfaces by providing '0.
+    server_name: str = "0.0.0.0",
+    share_gradio: bool = True,
+):
+    model, tokenizer, prompter, stopping_criteria = init(
+        load_8bit, base_model, lora_weights, prompt_template)
 
     def evaluate(
         instruction,

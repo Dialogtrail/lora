@@ -12,12 +12,13 @@ def create_sentences(string):
 
 def create_app(test_config=None):
     print("Initializing LLM")
-    # model, tokenizer, prompter, stopping_criteria = init(
-    #    False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
+    model, tokenizer, prompter, stopping_criteria = init(
+        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
 
     print("Initializing embedding model")
     # model = "distiluse-base-multilingual-cased-v2"
-    embedder_model = "all-mpnet-base-v2"
+    # embedder_model = "all-mpnet-base-v2"
+    embedder_model = "KBLab/sentence-bert-swedish-cased"
     embedder = SentenceTransformer(embedder_model)
 
     print("Initializing cross encoder")
@@ -42,13 +43,18 @@ def create_app(test_config=None):
             "result": sort
         }
 
-    @app.route('/generate')
+    @app.route('/generate', methods=['POST', 'GET'])
     def gen():
-        instr = request.args.get("instruction", "")
-        inp = request.args.get("input", "")
+        instr = request.args.get(
+            "instruction") or request.json.get("instruction") or ""
+        inp = request.args.get("input") or request.json.get("input") or ""
+        prompt = request.json.get("prompt", "eb")
         token = request.headers.get("x-api-token", "")
         if token != Config.SECRET:
             abort(401)
+
+        if prompt is not None:
+            prompter = Prompter(prompt)
 
         print("Generating")
 

@@ -10,32 +10,38 @@ from typing import Union
 class Prompter(object):
     __slots__ = ("template", "_verbose")
 
-    def __init__(self, template_name: str = "", verbose: bool = False):
+    def __init__(self, template="", verbose: bool = False):
         self._verbose = verbose
-        if not template_name:
+        if not template:
             # Enforce the default here, so the constructor can be called with '' and will not break.
-            template_name = "alpaca"
-        file_name = osp.join("templates", f"{template_name}.json")
-        if not osp.exists(file_name):
-            raise ValueError(f"Can't read {file_name}")
-        with open(file_name) as fp:
-            self.template = json.load(fp)
-        if self._verbose:
-            print(
-                f"Using prompt template {template_name}: {self.template['description']}"
-            )
+            template = "alpaca"
+
+        if type(template) is str:
+            file_name = osp.join("templates", f"{template}.json")
+            if not osp.exists(file_name):
+                raise ValueError(f"Can't read {file_name}")
+            with open(file_name) as fp:
+                self.template = json.load(fp)
+            if self._verbose:
+                print(
+                    f"Using prompt template {template}: {self.template['description']}"
+                )
+        else:
+            print("Using record template", template)
+            self.template = template
 
     def generate_prompt(
         self,
         instruction: str,
         input: Union[None, str] = None,
         label: Union[None, str] = None,
+        precontext: str = ""
     ) -> str:
         # returns the full prompt from instruction and optional input
         # if a label (=response, =output) is provided, it's also appended.
         if input:
             res = self.template["prompt_input"].format(
-                instruction=instruction, input=input
+                instruction=instruction, input=input, precontext=precontext
             )
         else:
             res = self.template["prompt_no_input"].format(
