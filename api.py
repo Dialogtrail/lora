@@ -3,6 +3,7 @@ from config import Config
 from generate import init, generate, generate_embs
 import re
 from sentence_transformers import SentenceTransformer, util, CrossEncoder
+from utils.prompter import Prompter
 
 
 def create_sentences(string):
