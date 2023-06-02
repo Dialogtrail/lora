@@ -159,7 +159,8 @@ def train(
         tokenized_full_prompt = tokenize(full_prompt)
         if not train_on_inputs:
             user_prompt = prompter.generate_prompt(
-                data_point["instruction"], data_point["input"]
+                data_point["instruction"], data_point["input"], None, data_point.get(
+                    "prompt", )
             )
             tokenized_user_prompt = tokenize(
                 user_prompt, add_eos_token=add_eos_token

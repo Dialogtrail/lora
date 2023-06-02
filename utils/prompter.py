@@ -45,7 +45,7 @@ class Prompter(object):
         # if a label (=response, =output) is provided, it's also appended.
         if input:
             res = prompt_input.format(
-                instruction=instruction, input=input, precontext=precontext
+                instruction=instruction, input=input
             )
         else:
             res = self.template["prompt_no_input"].format(
