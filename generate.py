@@ -60,7 +60,7 @@ def init(
     if device == "cuda":
         if lora_type == "qlora":
             model = AutoModelForCausalLM.from_pretrained(
-                lora_weights,
+                base_model,
                 load_in_8bit=load_8bit,
                 device_map="auto",
                 quantization_config=BitsAndBytesConfig(
@@ -80,11 +80,10 @@ def init(
                 torch_dtype=torch.float16,
                 device_map="auto",
             )
-            model = PeftModel.from_pretrained(
-                model,
-                lora_weights,
-                torch_dtype=torch.float16,
-            )
+        model = PeftModel.from_pretrained(
+            model,
+            lora_weights,
+        )
     elif device == "mps":
         model = LlamaForCausalLM.from_pretrained(
             base_model,
