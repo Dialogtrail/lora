@@ -67,11 +67,11 @@ def init(
                     load_in_8bit=load_8bit,
                     llm_int8_threshold=6.0,
                     llm_int8_has_fp16_weight=False,
-                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_compute_dtype=torch.bfloat16,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
                 ),
-                torch_dtype=torch.float32,
+                torch_dtype=torch.bfloat16,
             )
         else:
             model = LlamaForCausalLM.from_pretrained(
