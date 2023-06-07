@@ -73,7 +73,7 @@ def init(
                 ),
                 torch_dtype=torch.float32,
             )
-        else
+        else:
             model = LlamaForCausalLM.from_pretrained(
                 base_model,
                 load_in_8bit=load_8bit,
