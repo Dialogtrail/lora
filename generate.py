@@ -62,10 +62,10 @@ def init(
         if lora_type == "qlora":
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
-                load_in_4bit=True,
+                load_in_8bit=True,
                 device_map="auto",
                 quantization_config=BitsAndBytesConfig(
-                    load_in_4bit=True,
+                    load_in_8bit=True,
                     llm_int8_threshold=6.0,
                     llm_int8_has_fp16_weight=False,
                     bnb_4bit_compute_dtype=torch.bfloat16,
