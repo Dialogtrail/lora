@@ -114,6 +114,23 @@ def init(
     # if not load_8bit:
     #     model.half()  # seems to fix bugs for some users.
 
+    ##from qlora
+    setattr(model, 'model_parallel', True)
+    setattr(model, 'is_parallelizable', True)
+
+    model.config.torch_dtype=torch.bfloat16
+
+    for name, module in model.named_modules():
+        if isinstance(module, LoraLayer):
+            if args.bf16:
+                module = module.to(torch.bfloat16)
+        if 'norm' in name:
+            module = module.to(torch.float32)
+        if 'lm_head' in name or 'embed_tokens' in name:
+            if hasattr(module, 'weight'):
+                if args.bf16 and module.weight.dtype == torch.float32:
+                    module = module.to(torch.bfloat16)
+
     model.eval()
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
