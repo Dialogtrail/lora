@@ -7,6 +7,7 @@ import torch
 import transformers
 from peft import PeftModel
 from transformers import GenerationConfig, LlamaForCausalLM, AutoModelForCausalLM, BitsAndBytesConfig, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList
+from peft.tuners.lora import LoraLayer
 
 from utils.callbacks import Iteratorize, Stream
 from utils.prompter import Prompter
@@ -122,13 +123,12 @@ def init(
 
     for name, module in model.named_modules():
         if isinstance(module, LoraLayer):
-            if args.bf16:
-                module = module.to(torch.bfloat16)
+            module = module.to(torch.bfloat16)
         if 'norm' in name:
             module = module.to(torch.float32)
         if 'lm_head' in name or 'embed_tokens' in name:
             if hasattr(module, 'weight'):
-                if args.bf16 and module.weight.dtype == torch.float32:
+                if module.weight.dtype == torch.float32:
                     module = module.to(torch.bfloat16)
 
     model.eval()
