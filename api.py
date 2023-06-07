@@ -14,7 +14,7 @@ def create_sentences(string):
 def create_app(test_config=None):
     print("Initializing LLM")
     model, tokenizer, prompter, stopping_criteria = init(
-        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE)
+        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE, Config.LORA_TYPE)
 
     print("Initializing embedding model")
     # model = "distiluse-base-multilingual-cased-v2"

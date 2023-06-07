@@ -6,7 +6,7 @@ import gradio as gr
 import torch
 import transformers
 from peft import PeftModel
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList
+from transformers import GenerationConfig, LlamaForCausalLM, AutoModelForCausalLM, BitsAndBytesConfig, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList
 
 from utils.callbacks import Iteratorize, Stream
 from utils.prompter import Prompter
@@ -40,7 +40,8 @@ def init(
     load_8bit: bool = False,
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
-    prompt_template: str = ""
+    prompt_template: str = "",
+    lora_type: str = "lora"
 ):
     print(base_model)
     print(lora_weights)
@@ -57,17 +58,33 @@ def init(
         [StoppingCriteriaSub(stops=[tokenizer.eos_token_id])])
 
     if device == "cuda":
-        model = LlamaForCausalLM.from_pretrained(
-            base_model,
-            load_in_8bit=load_8bit,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-        model = PeftModel.from_pretrained(
-            model,
-            lora_weights,
-            torch_dtype=torch.float16,
-        )
+        if lora_type == "qlora":
+            model = AutoModelForCausalLM.from_pretrained(
+                lora_weights,
+                load_in_8bit=load_8bit,
+                device_map="auto",
+                quantization_config=BitsAndBytesConfig(
+                    load_in_8bit=load_8bit,
+                    llm_int8_threshold=6.0,
+                    llm_int8_has_fp16_weight=False,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                ),
+                torch_dtype=torch.float32,
+            )
+        else
+            model = LlamaForCausalLM.from_pretrained(
+                base_model,
+                load_in_8bit=load_8bit,
+                torch_dtype=torch.float16,
+                device_map="auto",
+            )
+            model = PeftModel.from_pretrained(
+                model,
+                lora_weights,
+                torch_dtype=torch.float16,
+            )
     elif device == "mps":
         model = LlamaForCausalLM.from_pretrained(
             base_model,
@@ -190,6 +207,7 @@ def main(
     load_8bit: bool = False,
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
+    lora_type: str = "lora",
     # The prompt template to use, will default to alpaca.
     prompt_template: str = "",
     # Allows to listen on all interfaces by providing '0.
@@ -197,7 +215,7 @@ def main(
     share_gradio: bool = True,
 ):
     model, tokenizer, prompter, stopping_criteria = init(
-        load_8bit, base_model, lora_weights, prompt_template)
+        load_8bit, base_model, lora_weights, prompt_template, lora_type)
 
     def evaluate(
         instruction,
