@@ -60,13 +60,25 @@ def init(
 
     if device == "cuda":
         if lora_type == "qlora":
+            n_gpus = torch.cuda.device_count()
+            max_memory = f'{args.max_memory_MB}MB'
+            max_memory = {i: max_memory for i in range(n_gpus)}
+            device_map = "auto"
+
+            # if we are in a distributed setting, we need to set the device map and max memory per device
+            if os.environ.get('LOCAL_RANK') is not None:
+                local_rank = int(os.environ.get('LOCAL_RANK', '0'))
+                device_map = {'': local_rank}
+                max_memory = {'': max_memory[local_rank]}
+            
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
                 load_in_8bit=load_8bit,
-                device_map="auto",
+                device_map=device_map,
+                max_memory=max_memory,
                 quantization_config=BitsAndBytesConfig(
                     load_in_8bit=load_8bit,
-                    llm_int8_threshold=1.0,
+                    # llm_int8_threshold=10.0,
                     llm_int8_has_fp16_weight=False,
                     bnb_4bit_compute_dtype=torch.bfloat16,
                     bnb_4bit_use_double_quant=True,
