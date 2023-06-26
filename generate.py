@@ -42,7 +42,9 @@ def init(
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
     prompt_template: str = "",
-    lora_type: str = "lora"
+    lora_type: str = "lora",
+    fp16 = None,
+    bf16 = None
 ):
     print(base_model)
     print(lora_weights)
@@ -72,7 +74,7 @@ def init(
                 device_map = {'': local_rank}
                 max_memory = {'': max_memory[local_rank]}
 
-            compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
+            compute_dtype = (torch.float16 if fp16 else (torch.bfloat16 if bf16 else torch.float32))
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
                 trust_remote_code=True,
