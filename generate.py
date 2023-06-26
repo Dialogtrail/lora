@@ -6,7 +6,7 @@ import gradio as gr
 import torch
 import transformers
 from peft import PeftModel
-from transformers import GenerationConfig, LlamaForCausalLM, AutoModelForCausalLM, BitsAndBytesConfig, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList
+from transformers import GenerationConfig, LlamaForCausalLM, AutoModelForCausalLM, BitsAndBytesConfig, LlamaTokenizer, StoppingCriteria, StoppingCriteriaList, AutoTokenizer
 from peft.tuners.lora import LoraLayer
 
 from utils.callbacks import Iteratorize, Stream
@@ -52,7 +52,8 @@ def init(
     ), "Please specify a --base_model, e.g. --base_model='huggyllama/llama-7b'"
 
     prompter = Prompter(prompt_template)
-    tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    #tokenizer = LlamaTokenizer.from_pretrained(base_model)
+    tokenizer = AutoTokenizer.from_pretrained(base_model)
     # stop_word = "</s>"
     # stop_words_ids = [tokenizer(stop_word, return_tensors='pt')['input_ids']]
     stopping_criteria = StoppingCriteriaList(
@@ -74,6 +75,7 @@ def init(
             compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
+                trust_remote_code=True,
                 load_in_8bit=load_8bit,
                 device_map=device_map,
                 max_memory=max_memory,
