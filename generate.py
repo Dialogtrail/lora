@@ -70,7 +70,8 @@ def init(
                 local_rank = int(os.environ.get('LOCAL_RANK', '0'))
                 device_map = {'': local_rank}
                 max_memory = {'': max_memory[local_rank]}
-            
+
+            compute_dtype = (torch.float16 if args.fp16 else (torch.bfloat16 if args.bf16 else torch.float32))
             model = AutoModelForCausalLM.from_pretrained(
                 base_model,
                 load_in_8bit=load_8bit,
@@ -80,11 +81,11 @@ def init(
                     load_in_8bit=load_8bit,
                     # llm_int8_threshold=10.0,
                     llm_int8_has_fp16_weight=False,
-                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_compute_dtype=compute_dtype,
                     bnb_4bit_use_double_quant=True,
                     bnb_4bit_quant_type="nf4",
                 ),
-                torch_dtype=torch.bfloat16,
+                torch_dtype=compute_dtype,
             )
         else:
             model = LlamaForCausalLM.from_pretrained(
