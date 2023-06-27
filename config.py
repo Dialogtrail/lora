@@ -3,3 +3,4 @@ class Config():
     BASE_MODEL = "../base-model"
     LORA_WEIGHTS = "./lora-weights"
     PROMPT_TEMPLATE = "eb"
+    LORA_TYPE = "lora"

@@ -1,6 +1,7 @@
 from falcontune.model import load_model
 from falcontune.model.lora import load_adapter
 from transformers import StoppingCriteriaList, StoppingCriteria
+import torch
 
 class AMPWrapper:
     def __init__(self, model, options=None):

@@ -227,7 +227,10 @@ def generate(
             return_dict_in_generate=True,
             output_scores=True,
             max_new_tokens=max_new_tokens,
-            stopping_criteria=stopping_criteria
+            stopping_criteria=stopping_criteria,
+            eos_token_id=tokenizer.eos_token_id,
+            bos_token_id=tokenizer.bos_token_id,
+            pad_token_id=tokenizer.eos_token_id,
         )
         s = generation_output.sequences[0]
         output = tokenizer.decode(s)
