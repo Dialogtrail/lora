@@ -234,7 +234,9 @@ def generate(
         )
         s = generation_output.sequences[0]
         output = tokenizer.decode(s)
-        yield prompter.get_response(output)
+        resp = prompter.get_response(output)
+        print(f"> {resp}")
+        yield resp
 
 
 def main(
