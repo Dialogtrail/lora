@@ -41,7 +41,6 @@ def init(
     load_8bit: bool = False,
     base_model: str = "",
     lora_weights: str = "tloen/alpaca-lora-7b",
-    prompt_template: str = "",
     lora_type: str = "lora",
     fp16 = None,
     bf16 = None
@@ -53,7 +52,6 @@ def init(
         base_model
     ), "Please specify a --base_model, e.g. --base_model='huggyllama/llama-7b'"
 
-    prompter = Prompter(prompt_template)
     #tokenizer = LlamaTokenizer.from_pretrained(base_model)
     tokenizer = AutoTokenizer.from_pretrained(base_model)
     # stop_word = "</s>"
@@ -152,7 +150,7 @@ def init(
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
 
-    return (model, tokenizer, prompter, stopping_criteria)
+    return (model, tokenizer, stopping_criteria)
 
 
 def generate_embs(model, tokenizer, input):

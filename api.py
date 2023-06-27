@@ -1,6 +1,7 @@
 from flask import Flask, stream_with_context, request, abort
 from config import Config
 from generate import init, generate, generate_embs
+from falcon import init_falcon
 import re
 from sentence_transformers import SentenceTransformer, util, CrossEncoder
 from utils.prompter import Prompter
@@ -13,8 +14,13 @@ def create_sentences(string):
 
 def create_app(test_config=None):
     print("Initializing LLM")
-    model, tokenizer, prompter, stopping_criteria = init(
-        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.PROMPT_TEMPLATE, Config.LORA_TYPE)
+    prompter = Prompter(Config.PROMPT_TEMPLATE)
+
+    model, tokenizer, stopping_criteria = init(
+        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.LORA_TYPE
+    ) if Config.BASE_MODEL != "tiiuae/falcon-7b" else init_falcon(
+        False, Config.BASE_MODEL, Config.LORA_WEIGHTS, Config.LORA_TYPE
+    )
 
     print("Initializing embedding model")
     # model = "distiluse-base-multilingual-cased-v2"
